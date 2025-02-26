@@ -1,0 +1,28 @@
+@use "bulma/sass/utilities/mixins";
+@use "bulma/sass/utilities/initial-variables" as iv;
+@import "bulma/bulma";
+// @import "@/node_modules/bulma/sass/utilities/mixins";
+
+// $border-color: iv.$black; // Use the Sass variable for initial value
+
+$border-color: iv.$white; // Use the Sass variable for initial value
+
+
+// Set custom property for dark mode
+@media (prefers-color-scheme: dark) {
+        $border-color: iv.$white; // Use the Sass variable for dark mode
+}
+
+.root-container {
+    width: 100vw;
+    min-height: 100vh;
+}
+
+.has-border {
+    border: 1px solid $border-color;
+}
+
+.table-container {
+    overflow: scroll;
+    max-height: 500px;
+}
