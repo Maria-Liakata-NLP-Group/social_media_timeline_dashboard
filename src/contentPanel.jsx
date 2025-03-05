@@ -106,11 +106,11 @@ const ContentPanel = ({summaries, summaryTypes}) => {
                                     rowBackground = "has-background-escalation"
                                 }   
                                 return (
-                                    <tr key={index} className={rowBackground}>
+                                    <tr key={index} >
                                         <td>{formattedDate}</td>
                                         <td>{formattedTime}</td>
                                         <td>{event.content}</td>
-                                        <td>{event.label[0]}</td>
+                                        <td className={rowBackground}>{event.label[0]}</td>
                                         <td>{""}</td>
                                     </tr>
                                 )
