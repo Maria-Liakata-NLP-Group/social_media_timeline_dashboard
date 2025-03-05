@@ -6,7 +6,6 @@ import summaries from './assets/timeline_summarization_orders.json'
 
 const summaryTypes = [
               "Llama-3.1-8B-Instruct",  
-              "Human",
             ]
 
 function App() {
@@ -24,12 +23,12 @@ function App() {
 
   return (
     <div className='is-flex p-2 root-container'>
-      <FilterPanel 
+      {/* <FilterPanel 
         setFilter={setInfo}
         timelineIds={Object.keys(summaries)}
         summaryTypes={summaryTypes}  
-      />
-      <ContentPanel tlid={timelineId} summary={summaries[timelineId][summary]}/>
+      /> */}
+      <ContentPanel summaries={summaries} summaryTypes={summaryTypes}/>
     </div>
   )
 }

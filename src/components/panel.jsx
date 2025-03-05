@@ -1,8 +1,11 @@
 import PropTypes from 'prop-types';
 
-const Panel = ({ children , flexGrow = 0}) => {    
+const Panel = ({ children , flexGrow = 0, height = "auto"}) => {    
     return (
-        <div className={`box m-2 is-flex-grow-${flexGrow}`}>
+        <div className={`is-flex is-flex-direction-column 
+            box m-2 is-flex-grow-${flexGrow} 
+            is-justify-content-space-between`}
+            style={{height: height}}>
             {children}
         </div>
     );
@@ -10,7 +13,8 @@ const Panel = ({ children , flexGrow = 0}) => {
 
 Panel.propTypes = {
     children: PropTypes.node.isRequired,
-    flexGrow: PropTypes.number
+    flexGrow: PropTypes.number,
+    height: PropTypes.string
 }
 
 export default Panel;
