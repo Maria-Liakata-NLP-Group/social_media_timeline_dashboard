@@ -34,6 +34,16 @@ $border-color: iv.$white; // Use the Sass variable for initial value
     background-color: lightcoral
 }
 
+tr.has-background-switch {
+    --bulma-table-cell-background-color: red;
+    --bulma-table-cell-border-color: red;
+}
+
+tr.has-background-escalation {
+    --bulma-table-cell-background-color: lightcoral;
+    --bulma-table-cell-border-color: lightcoral;
+}
+
 .is-bar {
     border-bottom: None;
 }

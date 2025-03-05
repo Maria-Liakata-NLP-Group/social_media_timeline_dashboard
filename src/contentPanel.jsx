@@ -95,9 +95,18 @@ const ContentPanel = ({summaries, summaryTypes}) => {
                                     hour: '2-digit', 
                                     minute: '2-digit', 
                                     second: '2-digit' 
-                                });   
+                                });
+                                
+                                const label = event.label[0]
+                                let rowBackground = ""
+                                if (label === "S") {
+                                    rowBackground = "has-background-switch"
+                                }
+                                else if (label === "E") {
+                                    rowBackground = "has-background-escalation"
+                                }   
                                 return (
-                                    <tr key={index}>
+                                    <tr key={index} className={rowBackground}>
                                         <td>{formattedDate}</td>
                                         <td>{formattedTime}</td>
                                         <td>{event.content}</td>
