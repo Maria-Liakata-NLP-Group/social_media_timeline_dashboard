@@ -1,132 +1,124 @@
+/** @format */
+
 import Panel from "./components/panel";
-import PeriodPlot from "./components/periodPlot";
-import PropTypes from 'prop-types';
-import { useState, useEffect } from "react";
+import PlotlyChart from "./components/plotlyGraph";
+import PostTable from "./components/postTable";
+import PropTypes from "prop-types";
+import { useState, useEffect, useCallback } from "react";
 
-const ContentPanel = ({summaries, summaryTypes}) => { 
+const filterAndSortPosts = (posts, dateRange) => {
+	const [start, end] = dateRange;
 
-    const timelineIds = Object.keys(summaries)
-    
-    const [timeline, setTimeline] = useState(null)
-    const [timelineId, setTimelineId] = useState(timelineIds[0])
-    const [summaryType, setSummaryTypes] = useState(summaryTypes[0])
-    const [period, setPeriod] = useState("all") // Period can be "all" or 0,1,2,3
+	const filteredPostEntries = Object.entries(posts)
+		.map(([key, post]) => {
+			const date = new Date(post.created_utc * 1000);
+			return { key, post, date };
+		})
+		.filter(({ date }) => {
+			if (!start || !end) return true;
+			return date >= start && date <= end;
+		})
+		.sort((a, b) => a.date - b.date);
 
-    const selectPeriod = (index) => {
-        if (index === period) {
-            setPeriod("all")
-        }
-        else {
-            setPeriod(index)
-        }
-    }
+	return filteredPostEntries.map(({ key }) => key);
+};
 
-    // dynamically load json file 
-    useEffect(() => {
-        fetch(`/data/${timelineId}.json`)
-            .then(response => response.json())
-            .then(data => setTimeline(data))
-    }, [timelineId, setTimeline])
+const ContentPanel = ({ userIds }) => {
+	const [userId, setUserId] = useState(userIds[0]);
+	const [timelines, setTimelines] = useState({});
+	const [posts, setPosts] = useState({});
+	const [sortedKeys, setSortedKeys] = useState([]); // sorted keys for post dictionary
+	const [summary, setSummary] = useState("");
 
-    return (
-        <Panel flexGrow={1} height={"95vh"}>
-            <div style={{height: "5%"}}>
-                <h1 className="subtitle is-5">Timeline</h1>
-                <div className="select">
-                    <select onChange={(e) => setTimelineId(e.target.value)}>
-                        {
-                            timelineIds.map((id, index) => {
-                                return <option key={index} value={id}>{id}</option>
-                            })
-                        }
-                    </select>
-                </div>
-            </div>
-            <div className="is-flex" style={{height: "40%"}}>
-                <div className="box is-shadowless has-border is-flex-grow-2"
-                     style={{ flexBasis: "70%",
-                              overflowX: "scroll"
-                      }}
-                >
-                    <h2 className="subtitle is-4">Summary {`(Time period: ${period === "all" ? period : period + 1})`} </h2>
-                    {summaries[timelineId][summaryType][period]}
-                </div>
-                <div className="is-flex is-flex-direction-column box is-shadowless is-flex-grow-1"
-                     style={{ flexBasis: "30%" }}>
-                    <PeriodPlot 
-                        timeline={summaries[timelineId][summaryType]} 
-                        returnFunction={selectPeriod} 
-                        activeBar={period}
-                    />
-                </div>
-            </div>
-            <div className="table-container"
-                style={{height: "40%"}}
-            >
-                <table className="table is-fullwidth is-hoverable"
-                >
-                    <thead>
-                        <tr>
-                            <th>Date</th>
-                            <th>Time</th>
-                            <th>Post</th>
-                            <th>Moment of Change</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {
-                            timeline && timeline.map((event, index) => {
-                                if (period !== "all") {
-                                    const postIndices = summaries[timelineId][summaryType]["period_post_indices"][period]
-                                    const postIndex = event.postid
-                                    console.log(`postIndex: ${postIndex}`)
-                                    if (!postIndices.includes(postIndex)) {
-                                        return null
-                                    }
-                                }
-                                // Convert to a Date object
-                                const date = new Date(event.date);
-                                const formattedDate = date.toLocaleDateString("en-GB", {
-                                    day: "numeric",
-                                    month: "long",
-                                    year: "numeric"
-                                });
-                                const formattedTime = date.toLocaleTimeString("en-GB", { 
-                                    hour: '2-digit', 
-                                    minute: '2-digit', 
-                                    second: '2-digit' 
-                                });
-                                
-                                const label = event.label[0]
-                                let rowBackground = ""
-                                if (label === "S") {
-                                    rowBackground = "has-background-switch"
-                                }
-                                else if (label === "E") {
-                                    rowBackground = "has-background-escalation"
-                                }   
-                                return (
-                                    <tr key={index} >
-                                        <td>{formattedDate}</td>
-                                        <td>{formattedTime}</td>
-                                        <td>{event.content}</td>
-                                        <td className={rowBackground}>{event.label[0]}</td>
-                                        <td>{""}</td>
-                                    </tr>
-                                )
-                            })
-                        }
-                    </tbody>
-                </table>
-            </div>
-        </Panel>
-    );
-}
+	// Load both posts and timelines together
+	useEffect(() => {
+		Promise.all([
+			fetch(`/data/${userId}_posts.json`).then((res) => res.json()),
+			fetch(`/data/${userId}_timelines.json`).then((res) => res.json()),
+		]).then(([postsData, timelinesData]) => {
+			setPosts(postsData);
+			setTimelines(timelinesData);
+		});
+	}, [userId]);
+
+	// Memoized date range handler
+	const handleDateRangeChange = useCallback(
+		(start, end) => {
+			const dateRange = [start, end];
+			const filteredAndSorted = filterAndSortPosts(posts, dateRange);
+			const timelineId = `${filteredAndSorted[0]}-${
+				filteredAndSorted[filteredAndSorted.length - 1]
+			}`;
+			setSummary(timelines[timelineId]?.summary || "");
+			setSortedKeys(filteredAndSorted);
+		},
+		[posts, timelines]
+	);
+
+	// Initialize sorted keys after loading
+	useEffect(() => {
+		if (Object.keys(posts).length && Object.keys(timelines).length) {
+			handleDateRangeChange(null, null);
+		}
+	}, [posts, timelines, handleDateRangeChange]);
+
+	return (
+		<Panel
+			flexGrow={1}
+			height={"95vh"}
+		>
+			<div style={{ height: "5%" }}>
+				<h1 className="subtitle is-5">Client ID</h1>
+				<div className="select">
+					<select onChange={(e) => setUserId(e.target.value)}>
+						{userIds.map((id) => (
+							<option
+								key={id}
+								value={id}
+							>
+								{id}
+							</option>
+						))}
+					</select>
+				</div>
+			</div>
+			<div
+				className="is-flex"
+				style={{ height: "40%" }}
+			>
+				<div
+					className="box is-shadowless has-border is-flex-grow-2"
+					style={{ flexBasis: "55%", overflowX: "scroll" }}
+				>
+					<h2 className="subtitle is-4">Summary</h2>
+					{summary}
+				</div>
+				<div
+					className="is-flex is-flex-direction-column box is-shadowless is-flex-grow-1"
+					style={{ flexBasis: "45%" }}
+				>
+					<PlotlyChart
+						posts={posts}
+						timelines={timelines}
+						onDateRangeChange={handleDateRangeChange}
+					/>
+				</div>
+			</div>
+			<div
+				className="table-container"
+				style={{ height: "40%" }}
+			>
+				<PostTable
+					posts={posts}
+					filteredKeys={sortedKeys}
+				/>
+			</div>
+		</Panel>
+	);
+};
 
 ContentPanel.propTypes = {
-    tlid: PropTypes.number.isRequired,
-    summary: PropTypes.string.isRequired
-}
+	userIds: PropTypes.arrayOf(PropTypes.string).isRequired,
+};
 
 export default ContentPanel;
-
