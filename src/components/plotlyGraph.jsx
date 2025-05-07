@@ -4,6 +4,32 @@ import Plot from "react-plotly.js";
 import PropTypes from "prop-types";
 import { useMemo, useState, useEffect, useCallback } from "react";
 
+const legendTraces = [
+	{
+		x: [null],
+		y: [null],
+		mode: "lines",
+		name: "Moments of Change",
+		line: {
+			color: "rgba(255, 0, 0, 0.7)",
+			width: 2,
+			dash: "solid",
+		},
+		hoverinfo: "skip",
+	},
+	{
+		x: [null],
+		y: [null],
+		mode: "lines",
+		name: "Timelines of Interest",
+		line: {
+			color: "rgba(255, 0, 0, 0.3)",
+			width: 10,
+		},
+		hoverinfo: "skip",
+	},
+];
+
 const PlotlyChart = ({ posts, timelines, onDateRangeChange }) => {
 	const [zoomRange, setZoomRange] = useState(null);
 	const [binSize, setBinSize] = useState("M1");
@@ -16,7 +42,6 @@ const PlotlyChart = ({ posts, timelines, onDateRangeChange }) => {
 		[posts]
 	);
 
-	// Calculate the initial zoom range based on the oldest and newest post
 	const initialZoomRange = useMemo(() => {
 		const dates = Object.values(posts).map(
 			(p) => new Date(p.created_utc * 1000)
@@ -108,7 +133,6 @@ const PlotlyChart = ({ posts, timelines, onDateRangeChange }) => {
 			.filter(Boolean);
 	}, [timelines, posts]);
 
-	// Adapt bin size based on zoom range
 	useEffect(() => {
 		if (!zoomRange) return setBinSize("M1");
 
@@ -118,14 +142,12 @@ const PlotlyChart = ({ posts, timelines, onDateRangeChange }) => {
 		setBinSize(days > 120 ? "M1" : days > 14 ? 604800000 : 86400000);
 	}, [zoomRange]);
 
-	// Set initial zoom range when posts are loaded
 	useEffect(() => {
 		if (initialZoomRange) {
 			setZoomRange(initialZoomRange);
 		}
 	}, [initialZoomRange]);
 
-	// Keep track of zoom range and return selected data range to parent
 	const handleRelayout = useCallback(
 		(eventData) => {
 			const x0 = eventData["xaxis.range[0]"];
@@ -164,30 +186,56 @@ const PlotlyChart = ({ posts, timelines, onDateRangeChange }) => {
 	);
 
 	return (
-		<Plot
-			onClick={handleClick}
-			onRelayout={handleRelayout}
-			data={[
-				{
-					x: timestamps,
-					type: "histogram",
-					xbins: { size: binSize },
-					marker: { color: "#3b82f6" },
-				},
-				...overlayTraces,
-			]}
-			layout={{
-				title: "Post Frequency Over Time",
-				xaxis: { type: "date", range: zoomRange || undefined },
-				yaxis: { title: "Number of Posts" },
-				bargap: 0.05,
-				showlegend: false,
-				hovermode: "closest",
-				shapes: [...shapes, ...momentsOfChange],
-			}}
-			config={{ responsive: true }}
-			style={{ width: "100%", height: "100%" }}
-		/>
+		<div style={{ flex: 1, minHeight: 0 }}>
+			<Plot
+				onClick={handleClick}
+				onRelayout={handleRelayout}
+				data={[
+					{
+						x: timestamps,
+						type: "histogram",
+						xbins: { size: binSize },
+						marker: { color: "#3b82f6" },
+					},
+					...overlayTraces,
+					...legendTraces,
+				]}
+				layout={{
+					title: {
+						text: "Post Frequency Over Time",
+						font: {
+							size: 14,
+						},
+						x: 0.5,
+						xanchor: "center",
+						showlegend: true,
+
+						margin: { t: 40, r: 20, b: 40, l: 60 }, // leaves space for y-axis
+						legend: {
+							orientation: "h",
+						},
+					},
+					xaxis: { type: "date", range: zoomRange || undefined },
+					yaxis: {
+						title: {
+							text: "Number of Posts",
+							font: {
+								size: 14,
+								color: "#4a4a4a",
+							},
+							standoff: 10,
+						},
+						automargin: true,
+					},
+					shapes: [...shapes, ...momentsOfChange],
+					bargap: 0.05,
+					hovermode: "closest",
+				}}
+				config={{ responsive: true }}
+				style={{ width: "100%", height: "100%" }}
+				useResizeHandler={true}
+			/>
+		</div>
 	);
 };
 

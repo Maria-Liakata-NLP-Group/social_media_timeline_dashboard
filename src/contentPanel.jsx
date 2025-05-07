@@ -67,7 +67,10 @@ const ContentPanel = ({ userIds }) => {
 			flexGrow={1}
 			height={"95vh"}
 		>
-			<div style={{ height: "5%" }}>
+			<div
+				className="mb-4"
+				style={{ flex: "0 0 auto" }}
+			>
 				<h1 className="subtitle is-5">Client ID</h1>
 				<div className="select">
 					<select onChange={(e) => setUserId(e.target.value)}>
@@ -83,18 +86,18 @@ const ContentPanel = ({ userIds }) => {
 				</div>
 			</div>
 			<div
-				className="is-flex"
-				style={{ height: "40%" }}
+				className="is-flex mb-4"
+				style={{ flex: "0 0 40%" }}
 			>
 				<div
-					className="box is-shadowless has-border is-flex-grow-2"
+					className="box has-border is-flex-grow-2 mr-2"
 					style={{ flexBasis: "55%", overflowX: "scroll" }}
 				>
 					<h2 className="subtitle is-4">Summary</h2>
 					{summary}
 				</div>
 				<div
-					className="is-flex is-flex-direction-column box is-shadowless is-flex-grow-1"
+					className="is-flex is-flex-direction-column box is-flex-grow-1 has-border ml-2"
 					style={{ flexBasis: "45%" }}
 				>
 					<PlotlyChart
@@ -105,8 +108,8 @@ const ContentPanel = ({ userIds }) => {
 				</div>
 			</div>
 			<div
-				className="table-container"
-				style={{ height: "40%" }}
+				className="table-container box has-border"
+				style={{ flex: "1 1 auto" }}
 			>
 				<PostTable
 					posts={posts}

@@ -5,7 +5,7 @@ import ContentPanel from "./contentPanel";
 
 function App() {
 	return (
-		<div className="is-flex p-2 root-container">
+		<div className="is-flex root-container">
 			<ContentPanel userIds={["tomorrowistomato"]} />
 		</div>
 	);
