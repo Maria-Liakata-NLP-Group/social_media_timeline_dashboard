@@ -1,6 +1,5 @@
 /** @format */
 
-import Panel from "./components/panel";
 import PlotlyChart from "./components/plotlyGraph";
 import PostTable from "./components/postTable";
 import PropTypes from "prop-types";
@@ -23,8 +22,7 @@ const filterAndSortPosts = (posts, dateRange) => {
 	return filteredPostEntries.map(({ key }) => key);
 };
 
-const ContentPanel = ({ userIds }) => {
-	const [userId, setUserId] = useState(userIds[0]);
+const ContentPanel = ({ userId }) => {
 	const [timelines, setTimelines] = useState({});
 	const [posts, setPosts] = useState({});
 	const [sortedKeys, setSortedKeys] = useState([]); // sorted keys for post dictionary
@@ -36,6 +34,7 @@ const ContentPanel = ({ userIds }) => {
 			fetch(`/data/${userId}_posts.json`).then((res) => res.json()),
 			fetch(`/data/${userId}_timelines.json`).then((res) => res.json()),
 		]).then(([postsData, timelinesData]) => {
+			setSortedKeys([]);
 			setPosts(postsData);
 			setTimelines(timelinesData);
 		});
@@ -63,28 +62,7 @@ const ContentPanel = ({ userIds }) => {
 	}, [posts, timelines, handleDateRangeChange]);
 
 	return (
-		<Panel
-			flexGrow={1}
-			height={"95vh"}
-		>
-			<div
-				className="mb-4"
-				style={{ flex: "0 0 auto" }}
-			>
-				<h1 className="subtitle is-5">Client ID</h1>
-				<div className="select">
-					<select onChange={(e) => setUserId(e.target.value)}>
-						{userIds.map((id) => (
-							<option
-								key={id}
-								value={id}
-							>
-								{id}
-							</option>
-						))}
-					</select>
-				</div>
-			</div>
+		<>
 			<div
 				className="is-flex mb-4"
 				style={{ flex: "0 0 40%" }}
@@ -116,12 +94,12 @@ const ContentPanel = ({ userIds }) => {
 					filteredKeys={sortedKeys}
 				/>
 			</div>
-		</Panel>
+		</>
 	);
 };
 
 ContentPanel.propTypes = {
-	userIds: PropTypes.arrayOf(PropTypes.string).isRequired,
+	userId: PropTypes.string.isRequired,
 };
 
 export default ContentPanel;
