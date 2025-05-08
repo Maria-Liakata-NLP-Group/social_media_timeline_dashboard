@@ -3,6 +3,7 @@
 import PlotlyChart from "./components/plotlyGraph";
 import PostTable from "./components/postTable";
 import PropTypes from "prop-types";
+import Summary from "./components/summary";
 import { useState, useEffect, useCallback } from "react";
 
 const filterAndSortPosts = (posts, dateRange) => {
@@ -28,8 +29,7 @@ const ContentPanel = ({ userId }) => {
 	const [sortedKeys, setSortedKeys] = useState([]); // sorted keys for post dictionary
 	const [summary, setSummary] = useState("");
 
-	// Load both posts and timelines together
-	useEffect(() => {
+	const loadData = useCallback(() => {
 		Promise.all([
 			fetch(`/data/${userId}_posts.json`).then((res) => res.json()),
 			fetch(`/data/${userId}_timelines.json`).then((res) => res.json()),
@@ -40,19 +40,26 @@ const ContentPanel = ({ userId }) => {
 		});
 	}, [userId]);
 
-	// Memoized date range handler
 	const handleDateRangeChange = useCallback(
 		(start, end) => {
 			const dateRange = [start, end];
 			const filteredAndSorted = filterAndSortPosts(posts, dateRange);
-			const timelineId = `${filteredAndSorted[0]}-${
-				filteredAndSorted[filteredAndSorted.length - 1]
-			}`;
+			const timelineId = `${filteredAndSorted[0]}-${filteredAndSorted[filteredAndSorted.length - 1]}`;
 			setSummary(timelines[timelineId]?.summary || "");
 			setSortedKeys(filteredAndSorted);
 		},
 		[posts, timelines]
 	);
+
+	const handleOnGenerationComplete = () => {
+		console.log("Generation complete, reloading data...");
+		loadData();
+	};
+
+	useEffect(() => {
+		loadData();
+	}, [loadData]);
+
 
 	// Initialize sorted keys after loading
 	useEffect(() => {
@@ -71,8 +78,7 @@ const ContentPanel = ({ userId }) => {
 					className="box has-border is-flex-grow-2 mr-2"
 					style={{ flexBasis: "55%", overflowX: "scroll" }}
 				>
-					<h2 className="subtitle is-4">Summary</h2>
-					{summary}
+					<Summary summary={summary} userId={userId} postIds={sortedKeys} handleOnGenerationComplete={handleOnGenerationComplete}/>
 				</div>
 				<div
 					className="is-flex is-flex-direction-column box is-flex-grow-1 has-border ml-2"
