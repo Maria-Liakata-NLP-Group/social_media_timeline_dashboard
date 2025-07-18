@@ -62,7 +62,8 @@ parser_args = parser.parse_args()
 current_dir = "/import/nlp/social_media_timeline_dashboard/"
 
 model_hp = ModelHP()
-run_hp = RunHP(root_path=os.path.join(current_dir, "THVAE-summary")) 
+run_hp = RunHP(root_path=os.path.join(current_dir, "THVAE-summary"))
+run_hp.checkpoint_path = "/import/nlp/social_media_timeline_dashboard/THVAE-summary/runs/amazon/first_run/57/checkpoint.tar"
 manual_seed(run_hp.seed)
 np.random.seed(run_hp.seed)
 
@@ -197,8 +198,10 @@ idev = IDev(imodel=imodel, train_data_pipeline=train_pipeline,
 #   PARAMETERS LOADING OR INITIALIZATION    #
 
 if run_hp.checkpoint_path:
+    print("Loading model from: %s" % run_hp.checkpoint_path)
     imodel.load_state(run_hp.checkpoint_path, strict=True)
 else:
+    print("Initializing model with random weights.")
     imodel.init_weights(multi_dim_init_func=xavier_uniform_,
                         single_dim_init_func=lambda x: normal_(x, std=0.1))
 
@@ -269,8 +272,10 @@ else:
     assert infer_inp_file_path is not None
     rev_num = get_rev_number(infer_inp_file_path)
 
+    print(f"Rev_num: {rev_num}")
+
     logger.info("Performing inference/summary generation")
-    infer_data_pipeline = assemble_infer_pipeline(word_vocab, bart_tokenizer= bart_tokenizer,
+    infer_data_pipeline = assemble_infer_pipeline(word_vocab, bart_tokenizer,
                                                   max_reviews=rev_num,
                                                   tokenization_func=run_hp.tok_func,
                                                   max_groups_per_chunk=infer_bsz)
