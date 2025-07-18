@@ -2,7 +2,7 @@
 
 import Plot from "react-plotly.js";
 import PropTypes from "prop-types";
-import { useMemo, useState, useEffect, useCallback } from "react";
+import { useMemo, useState, useEffect, useCallback, useRef } from "react";
 
 const legendTraces = [
 	{
@@ -30,7 +30,7 @@ const legendTraces = [
 	},
 ];
 
-const PlotlyChart = ({ posts, timelines, onDateRangeChange }) => {
+const PlotlyChart = ({ userId, posts, timelines, onDateRangeChange }) => {
 	const [zoomRange, setZoomRange] = useState(null);
 	const [binSize, setBinSize] = useState("M1");
 
@@ -42,21 +42,31 @@ const PlotlyChart = ({ posts, timelines, onDateRangeChange }) => {
 		[posts]
 	);
 
+	// 1) Keep a ref of the *latest* posts
+	const postsRef = useRef(posts);
+	useEffect(() => {
+		postsRef.current = posts;
+	}, [posts]);
+
+	// 2) Compute initialZoomRange only when userId changes
+
 	const initialZoomRange = useMemo(() => {
-		const dates = Object.values(posts).map(
+		const snap = postsRef.current; // read the snapshot
+		const dates = Object.values(snap).map(
 			(p) => new Date(p.created_utc * 1000)
 		);
 		if (dates.length === 0) return null;
 		const minDate = new Date(Math.min(...dates));
 		const maxDate = new Date(Math.max(...dates));
 		return [minDate.toISOString(), maxDate.toISOString()];
-	}, [posts]);
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [userId]);
 
 	const shapes = useMemo(() => {
 		return Object.values(timelines).flatMap((timeline) => {
 			const first = posts[timeline.posts[0]];
 			const last = posts[timeline.posts.at(-1)];
-			if (!first || !last) return [];
+			if (!first || !last || !timeline.timeline_of_interest) return [];
 
 			const start = new Date(first.created_utc * 1000);
 			const end = new Date(last.created_utc * 1000);
@@ -108,7 +118,7 @@ const PlotlyChart = ({ posts, timelines, onDateRangeChange }) => {
 			.map((timeline) => {
 				const first = posts[timeline.posts[0]];
 				const last = posts[timeline.posts.at(-1)];
-				if (!first || !last) return null;
+				if (!first || !last || !timeline.timeline_of_interest) return null;
 
 				const center = new Date((first.created_utc + last.created_utc) * 500); // average in ms
 
@@ -240,6 +250,7 @@ const PlotlyChart = ({ posts, timelines, onDateRangeChange }) => {
 };
 
 PlotlyChart.propTypes = {
+	userId: PropTypes.string.isRequired,
 	posts: PropTypes.object.isRequired,
 	timelines: PropTypes.object.isRequired,
 	onDateRangeChange: PropTypes.func.isRequired,

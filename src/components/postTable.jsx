@@ -5,7 +5,10 @@ import PropTypes from "prop-types";
 
 const PostTable = ({ posts, filteredKeys }) => {
 	const filteredPosts = useMemo(
-		() => filteredKeys.map((key) => posts[key]),
+		() =>
+			filteredKeys
+				.map((key) => posts[key])
+				.filter((post) => post !== undefined),
 		[posts, filteredKeys]
 	);
 

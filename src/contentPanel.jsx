@@ -4,7 +4,7 @@ import PlotlyChart from "./components/plotlyGraph";
 import PostTable from "./components/postTable";
 import PropTypes from "prop-types";
 import Summary from "./components/summary";
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 
 const filterAndSortPosts = (posts, dateRange) => {
 	const [start, end] = dateRange;
@@ -23,50 +23,39 @@ const filterAndSortPosts = (posts, dateRange) => {
 	return filteredPostEntries.map(({ key }) => key);
 };
 
-const ContentPanel = ({ userId }) => {
-	const [timelines, setTimelines] = useState({});
-	const [posts, setPosts] = useState({});
+const ContentPanel = ({
+	userId,
+	posts,
+	timelines,
+	isGenerating,
+	onGenerate,
+}) => {
 	const [sortedKeys, setSortedKeys] = useState([]); // sorted keys for post dictionary
 	const [summary, setSummary] = useState("");
 
-	const loadData = useCallback(() => {
-		Promise.all([
-			fetch(`/data/${userId}_posts.json`).then((res) => res.json()),
-			fetch(`/data/${userId}_timelines.json`).then((res) => res.json()),
-		]).then(([postsData, timelinesData]) => {
-			setSortedKeys([]);
-			setPosts(postsData);
-			setTimelines(timelinesData);
-		});
-	}, [userId]);
+	// keep track of the last userId for which we ran initialization
+	const lastInitUserId = useRef();
 
 	const handleDateRangeChange = useCallback(
 		(start, end) => {
 			const dateRange = [start, end];
 			const filteredAndSorted = filterAndSortPosts(posts, dateRange);
-			const timelineId = `${filteredAndSorted[0]}-${filteredAndSorted[filteredAndSorted.length - 1]}`;
+			const timelineId = `${filteredAndSorted[0]}-${
+				filteredAndSorted[filteredAndSorted.length - 1]
+			}`;
 			setSummary(timelines[timelineId]?.summary || "");
 			setSortedKeys(filteredAndSorted);
 		},
 		[posts, timelines]
 	);
 
-	const handleOnGenerationComplete = () => {
-		console.log("Generation complete, reloading data...");
-		loadData();
-	};
-
+	// Initialize *once* when posts first arrive for a new userId
 	useEffect(() => {
-		loadData();
-	}, [loadData]);
-
-
-	// Initialize sorted keys after loading
-	useEffect(() => {
-		if (Object.keys(posts).length && Object.keys(timelines).length) {
+		if (userId !== lastInitUserId.current && Object.keys(posts).length) {
 			handleDateRangeChange(null, null);
+			lastInitUserId.current = userId;
 		}
-	}, [posts, timelines, handleDateRangeChange]);
+	}, [userId, posts, handleDateRangeChange]);
 
 	return (
 		<>
@@ -78,13 +67,18 @@ const ContentPanel = ({ userId }) => {
 					className="box has-border is-flex-grow-2 mr-2"
 					style={{ flexBasis: "55%", overflowX: "scroll" }}
 				>
-					<Summary summary={summary} userId={userId} postIds={sortedKeys} handleOnGenerationComplete={handleOnGenerationComplete}/>
+					<Summary
+						summary={summary}
+						isGenerating={isGenerating}
+						handleOnGenerate={() => onGenerate(sortedKeys)}
+					/>
 				</div>
 				<div
 					className="is-flex is-flex-direction-column box is-flex-grow-1 has-border ml-2"
 					style={{ flexBasis: "45%" }}
 				>
 					<PlotlyChart
+						userId={userId}
 						posts={posts}
 						timelines={timelines}
 						onDateRangeChange={handleDateRangeChange}
@@ -106,6 +100,10 @@ const ContentPanel = ({ userId }) => {
 
 ContentPanel.propTypes = {
 	userId: PropTypes.string.isRequired,
+	posts: PropTypes.object.isRequired,
+	timelines: PropTypes.object.isRequired,
+	isGenerating: PropTypes.bool.isRequired,
+	onGenerate: PropTypes.func.isRequired,
 };
 
 export default ContentPanel;

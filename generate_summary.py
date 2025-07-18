@@ -23,7 +23,7 @@ hf_token = "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"
 login(token=hf_token)
 
 # Load model
-hf_cache = "/import/nlp/LLMs/"
+hf_cache = "/import/nlp-datasets/LLMs/"
 model_id = "meta-llama/Meta-Llama-3.1-8B-Instruct"
 llm = LLMGenerator(model_name=model_id)
 
@@ -103,7 +103,7 @@ def create_summary_data_for_dashboard(
     if timeline_id not in timelines:
         timelines[timeline_id] = {
             "timeline_of_interest": False,
-            "posts": filtered_posts,
+            "posts": posts_ids,
             "summary": timeline_summary
         }
     else:
@@ -114,6 +114,7 @@ def create_summary_data_for_dashboard(
         json.dump(timelines, f, indent=4)
 
 
+# use this for testing by running the script directly
 if __name__ == "__main__":
     user_id = "tomorrowistomato"
     post_ids = [
