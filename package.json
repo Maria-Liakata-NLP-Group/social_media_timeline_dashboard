@@ -4,7 +4,9 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
+    "dev": "concurrently -k -r -n VITE,FLASK -c green,cyan \"npm:dev:vite\" \"npm:dev:flask\"",
+    "dev:vite": "vite",
+    "dev:flask": "python app.py",
     "build": "vite build",
     "lint": "eslint .",
     "preview": "vite preview"
@@ -23,6 +25,7 @@
     "@types/react": "^19.0.8",
     "@types/react-dom": "^19.0.3",
     "@vitejs/plugin-react": "^4.3.4",
+    "concurrently": "^9.2.0",
     "eslint": "^9.19.0",
     "eslint-plugin-react": "^7.37.4",
     "eslint-plugin-react-hooks": "^5.0.0",

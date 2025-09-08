@@ -27,7 +27,7 @@ function App() {
 		loadData();
 	}, [loadData]);
 
-	const handleGenerate = async (postIds) => {
+	const handleGenerate = async (postIds, modelName) => {
 		setGen(true);
 		setError("");
 
@@ -40,7 +40,7 @@ function App() {
 				body: JSON.stringify({
 					user_id: userId, // make sure userId is in scope
 					posts_ids: postIds, // the array you pass in
-					prompt_type: "specific",
+					model_name: modelName, // the model name
 				}),
 			});
 

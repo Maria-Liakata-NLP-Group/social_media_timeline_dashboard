@@ -32,6 +32,7 @@ const ContentPanel = ({
 }) => {
 	const [sortedKeys, setSortedKeys] = useState([]); // sorted keys for post dictionary
 	const [summary, setSummary] = useState("");
+	const [summaryModel, setSummaryModel] = useState("tulu");
 
 	// keep track of the last userId for which we ran initialization
 	const lastInitUserId = useRef();
@@ -43,10 +44,10 @@ const ContentPanel = ({
 			const timelineId = `${filteredAndSorted[0]}-${
 				filteredAndSorted[filteredAndSorted.length - 1]
 			}`;
-			setSummary(timelines[timelineId]?.summary || "");
+			setSummary(timelines[timelineId]?.[`summary_${summaryModel}`] || "");
 			setSortedKeys(filteredAndSorted);
 		},
-		[posts, timelines]
+		[posts, timelines, summaryModel]
 	);
 
 	// Initialize *once* when posts first arrive for a new userId
@@ -67,10 +68,36 @@ const ContentPanel = ({
 					className="box has-border is-flex-grow-2 mr-2"
 					style={{ flexBasis: "55%", overflowX: "scroll" }}
 				>
+					<div className="tabs is-toggle">
+						<ul>
+							<li
+								className={summaryModel === "tulu" ? "is-active" : ""}
+								onClick={() => setSummaryModel("tulu")}
+							>
+								<a>
+									<span>Tulu</span>
+								</a>
+							</li>
+							<li
+								className={
+									summaryModel === "meta-llama/Meta-Llama-3.1-8B-Instruct"
+										? "is-active"
+										: ""
+								}
+								onClick={() =>
+									setSummaryModel("meta-llama/Meta-Llama-3.1-8B-Instruct")
+								}
+							>
+								<a>
+									<span>LLama</span>
+								</a>
+							</li>
+						</ul>
+					</div>
 					<Summary
 						summary={summary}
 						isGenerating={isGenerating}
-						handleOnGenerate={() => onGenerate(sortedKeys)}
+						handleOnGenerate={() => onGenerate(sortedKeys, summaryModel)}
 					/>
 				</div>
 				<div

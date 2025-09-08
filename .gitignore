@@ -3,3 +3,5 @@ dashboard_reference.png
 npm-debug.log
 *.tsv
 THVAE-summary
+__pycache__/
+hf_token.txt
