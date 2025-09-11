@@ -5,3 +5,5 @@ npm-debug.log
 THVAE-summary
 __pycache__/
 hf_token.txt
+.venv
+.python-version
