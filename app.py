@@ -28,12 +28,12 @@ gen_data = {}
 # Summarisation with LLama model
 names = ("post_level", "timeline_level")
 rows = [load_prompt(f"clpsych2025_{n}.yaml") for n in names]
-gen_data["meta-llama/Meta-Llama-3.1-8B-Instruct"] = map(list, zip(*rows))
+gen_data["meta-llama/Meta-Llama-3.1-8B-Instruct"] = tuple(map(tuple, zip(*rows)))
 
 # Temportal Reasoning sumariser
 names = ("diagnosis", "summarise")
 rows = [load_prompt(f"jsong_temporal_reasoning_{n}.yaml") for n in names]
-gen_data["tulu"] = map(list, zip(*rows))
+gen_data["tulu"] = tuple(map(tuple, zip(*rows)))
 
 # Little class to handle switching between models
 class ModelHandler():
@@ -160,7 +160,6 @@ def generate_summary():
         
         if model_name != summariser.model_name:
             summariser.load_summariser(model_name, cache_dir=CACHE_DIR)
-
         prompts, max_tokens, temperatures = gen_data[model_name]
         print(f"Create summary for user {user_id} with posts {posts_ids}.")
         create_summary_data_for_dashboard(summariser.summariser, user_id, posts_ids, prompts, max_tokens, temperatures)
