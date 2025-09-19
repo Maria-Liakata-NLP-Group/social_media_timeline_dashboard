@@ -1,8 +1,18 @@
 /** @format */
 
+import axios from "axios";
 import Plot from "react-plotly.js";
 import PropTypes from "prop-types";
-import { useMemo, useState, useEffect, useCallback, useRef } from "react";
+import {
+	useMemo,
+	useState,
+	useEffect,
+	useCallback,
+	useRef,
+	useContext,
+} from "react";
+
+import { BackendContext } from "../main";
 
 const legendTraces = [
 	{
@@ -30,9 +40,43 @@ const legendTraces = [
 	},
 ];
 
-const PlotlyChart = ({ userId, posts, timelines, onDateRangeChange }) => {
+const filterForTimelinesOfInterest = (timelines) => {
+	return Object.values(timelines)
+		.filter((timeline) => timeline.timeline_of_interest)
+		.map((timeline) => timeline.posts);
+};
+
+const PlotlyChart = ({ userId, posts, onDateRangeChange }) => {
 	const [zoomRange, setZoomRange] = useState(null);
+	const [timelinesOfInterest, setTimelinesOfInterest] = useState([]);
 	const [binSize, setBinSize] = useState("M1");
+	const { backendAvailable } = useContext(BackendContext);
+
+	// Get timelines of interest from backend if available
+	const getTimelinesOfInterest = useCallback(async () => {
+		if (backendAvailable) {
+			try {
+				const res = await axios.get(`/api/timelines-of-interest/${userId}`);
+				setTimelinesOfInterest(res.data);
+			} catch (e) {
+				console.error("Failed to load timelines of interest:", e);
+				setTimelinesOfInterest([]);
+			}
+		} else {
+			try {
+				// Fallback to frontend data
+				const res = await axios.get(`/data/${userId}_timelines.json`);
+				const toi = filterForTimelinesOfInterest(res.data);
+				setTimelinesOfInterest(toi);
+			} catch (e) {
+				console.error(
+					"Failed to load timelines of interest from frontend data:",
+					e
+				);
+				setTimelinesOfInterest([]);
+			}
+		}
+	}, [backendAvailable, userId]);
 
 	const timestamps = useMemo(
 		() =>
@@ -41,6 +85,11 @@ const PlotlyChart = ({ userId, posts, timelines, onDateRangeChange }) => {
 			),
 		[posts]
 	);
+
+	// Calculate timelines of interest when userId changes
+	useEffect(() => {
+		getTimelinesOfInterest();
+	}, [getTimelinesOfInterest]);
 
 	// 1) Keep a ref of the *latest* posts
 	const postsRef = useRef(posts);
@@ -63,10 +112,10 @@ const PlotlyChart = ({ userId, posts, timelines, onDateRangeChange }) => {
 	}, [userId]);
 
 	const shapes = useMemo(() => {
-		return Object.values(timelines).flatMap((timeline) => {
-			const first = posts[timeline.posts[0]];
-			const last = posts[timeline.posts.at(-1)];
-			if (!first || !last || !timeline.timeline_of_interest) return [];
+		return timelinesOfInterest.flatMap((timeline) => {
+			const first = posts[timeline[0]];
+			const last = posts[timeline.at(-1)];
+			if (!first || !last) return [];
 
 			const start = new Date(first.created_utc * 1000);
 			const end = new Date(last.created_utc * 1000);
@@ -85,11 +134,11 @@ const PlotlyChart = ({ userId, posts, timelines, onDateRangeChange }) => {
 				},
 			];
 		});
-	}, [timelines, posts]);
+	}, [timelinesOfInterest, posts]);
 
 	const momentsOfChange = useMemo(() => {
-		return Object.values(timelines).flatMap((timeline) =>
-			timeline.posts
+		return timelinesOfInterest.flatMap((timeline) =>
+			timeline
 				.map((id) => posts[id])
 				.filter(
 					(post) =>
@@ -111,14 +160,14 @@ const PlotlyChart = ({ userId, posts, timelines, onDateRangeChange }) => {
 					},
 				}))
 		);
-	}, [timelines, posts]);
+	}, [timelinesOfInterest, posts]);
 
 	const overlayTraces = useMemo(() => {
-		return Object.values(timelines)
+		return timelinesOfInterest
 			.map((timeline) => {
-				const first = posts[timeline.posts[0]];
-				const last = posts[timeline.posts.at(-1)];
-				if (!first || !last || !timeline.timeline_of_interest) return null;
+				const first = posts[timeline[0]];
+				const last = posts[timeline.at(-1)];
+				if (!first || !last) return null;
 
 				const center = new Date((first.created_utc + last.created_utc) * 500); // average in ms
 
@@ -141,7 +190,7 @@ const PlotlyChart = ({ userId, posts, timelines, onDateRangeChange }) => {
 				};
 			})
 			.filter(Boolean);
-	}, [timelines, posts]);
+	}, [timelinesOfInterest, posts]);
 
 	useEffect(() => {
 		if (!zoomRange) return setBinSize("M1");
@@ -252,7 +301,6 @@ const PlotlyChart = ({ userId, posts, timelines, onDateRangeChange }) => {
 PlotlyChart.propTypes = {
 	userId: PropTypes.string.isRequired,
 	posts: PropTypes.object.isRequired,
-	timelines: PropTypes.object.isRequired,
 	onDateRangeChange: PropTypes.func.isRequired,
 };
 

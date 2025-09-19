@@ -2,12 +2,24 @@
 
 import PropTypes from "prop-types";
 
-const Summary = ({ summary, handleOnGenerate, isGenerating }) => {
+const Summary = ({
+	summary,
+	handleOnGenerate,
+	handleOnDelete,
+	isGenerating,
+}) => {
 	// 1) Summary already exists
 	if (summary) {
 		return (
 			<>
-				<h2 className="subtitle is-4">Summary</h2>
+				<div style={{ display: "flex" }}>
+					<h2 className="subtitle is-4">Summary</h2>
+					<button
+						onClick={handleOnDelete}
+						className="delete is-small ml-2"
+						title="Delete Summary"
+					></button>
+				</div>
 				<p>{summary}</p>
 			</>
 		);
@@ -45,6 +57,7 @@ const Summary = ({ summary, handleOnGenerate, isGenerating }) => {
 Summary.propTypes = {
 	summary: PropTypes.string.isRequired,
 	handleOnGenerate: PropTypes.func.isRequired,
+	handleOnDelete: PropTypes.func.isRequired,
 	isGenerating: PropTypes.bool.isRequired,
 };
 

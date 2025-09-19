@@ -1,10 +1,12 @@
 /** @format */
+import axios from "axios";
+import { useState, useEffect, useCallback, useContext } from "react";
 
+import { BackendContext } from "./main.jsx";
 import PlotlyChart from "./components/plotlyGraph";
 import PostTable from "./components/postTable";
 import PropTypes from "prop-types";
 import Summary from "./components/summary";
-import { useState, useEffect, useCallback, useRef } from "react";
 
 const filterAndSortPosts = (posts, dateRange) => {
 	const [start, end] = dateRange;
@@ -26,17 +28,14 @@ const filterAndSortPosts = (posts, dateRange) => {
 const ContentPanel = ({
 	userId,
 	posts,
-	timelines,
 	isGenerating,
 	onGenerate,
+	summaryModel,
 }) => {
 	const [sortedKeys, setSortedKeys] = useState([]); // sorted keys for post dictionary
 	const [summary, setSummary] = useState("");
-	const [summaryModel, setSummaryModel] = useState("tulu");
 	const [timelineId, setTimelineId] = useState("");
-
-	// keep track of the last userId for which we ran initialization
-	const lastInitUserId = useRef();
+	const { backendAvailable } = useContext(BackendContext);
 
 	const handleDateRangeChange = useCallback(
 		(start, end) => {
@@ -47,30 +46,71 @@ const ContentPanel = ({
 					filteredAndSorted[filteredAndSorted.length - 1]
 				}`
 			);
-			// setSummary(timelines[timelineId]?.[`summary_${summaryModel}`] || "");
 			setSortedKeys(filteredAndSorted);
 		},
 		[posts]
 	);
 
-	// Initialize *once* when posts first arrive for a new userId
+	// Initialize *once* when posts first arrive after changing user
 	useEffect(() => {
-		if (userId !== lastInitUserId.current && Object.keys(posts).length) {
-			handleDateRangeChange(null, null);
-			lastInitUserId.current = userId;
-		}
-	}, [userId, posts, handleDateRangeChange]);
+		handleDateRangeChange(null, null);
+	}, [posts, handleDateRangeChange]);
+
+	// Load summary either from backend if available or from frontend data
+	const loadSummary = useCallback(
+		async (userId, timelineId, summaryModel) => {
+			try {
+				if (backendAvailable) {
+					const res = await axios.get("/api/summary", {
+						params: {
+							user_id: userId,
+							timeline_id: timelineId,
+							model_name: summaryModel,
+						},
+					});
+					setSummary(res.data.summary);
+				} else {
+					const res = await axios.get(`/data/${userId}_timelines.json`);
+					const timelinedata = res.data;
+					setSummary(
+						timelinedata[timelineId]?.[`summary_${summaryModel}`] || ""
+					);
+				}
+			} catch (e) {
+				console.error("Failed to load summary:", e);
+				setSummary("");
+			}
+		},
+		[backendAvailable]
+	);
 
 	// Make sure to update summary if the model changes
 	useEffect(() => {
-		setSummary(timelines[timelineId]?.[`summary_${summaryModel}`] || "");
-	}, [summaryModel, timelines, timelineId]);
+		loadSummary(userId, timelineId, summaryModel);
+	}, [loadSummary, summaryModel, timelineId, userId, isGenerating]);
+
+	const onDelete = async () => {
+		try {
+			await axios.delete("/api/summary", {
+				params: {
+					user_id: userId,
+					timeline_id: timelineId,
+					model_name: summaryModel,
+				},
+			});
+			// Reload summary
+			loadSummary(userId, timelineId, summaryModel);
+		} catch (error) {
+			console.error("Deletion error:", error);
+			alert(error);
+		}
+	};
 
 	return (
 		<>
 			<div
 				className="is-flex mb-4"
-				style={{ height: "40%" }}
+				style={{ flexBasis: "40%", minHeight: "40%", maxHeight: "40%" }}
 			>
 				<div
 					className="box has-border is-flex-grow-2 mr-2"
@@ -80,36 +120,11 @@ const ContentPanel = ({
 						overflowX: "scroll",
 					}}
 				>
-					<div className="tabs is-toggle">
-						<ul>
-							<li
-								className={summaryModel === "tulu" ? "is-active" : ""}
-								onClick={() => setSummaryModel("tulu")}
-							>
-								<a>
-									<span>Tulu</span>
-								</a>
-							</li>
-							<li
-								className={
-									summaryModel === "meta-llama/Meta-Llama-3.1-8B-Instruct"
-										? "is-active"
-										: ""
-								}
-								onClick={() =>
-									setSummaryModel("meta-llama/Meta-Llama-3.1-8B-Instruct")
-								}
-							>
-								<a>
-									<span>LLama</span>
-								</a>
-							</li>
-						</ul>
-					</div>
 					<Summary
 						summary={summary}
 						isGenerating={isGenerating}
 						handleOnGenerate={() => onGenerate(sortedKeys, summaryModel)}
+						handleOnDelete={onDelete}
 					/>
 					{/* Create nice fade-out at bottom */}
 					<div
@@ -130,14 +145,13 @@ const ContentPanel = ({
 					<PlotlyChart
 						userId={userId}
 						posts={posts}
-						timelines={timelines}
 						onDateRangeChange={handleDateRangeChange}
 					/>
 				</div>
 			</div>
 			<div
 				className="table-container box has-border"
-				style={{ position: "relative", height: "60%" }}
+				style={{ position: "relative", flexBasis: "60%", minHeight: 0 }}
 			>
 				<PostTable
 					posts={posts}
@@ -162,9 +176,9 @@ const ContentPanel = ({
 ContentPanel.propTypes = {
 	userId: PropTypes.string.isRequired,
 	posts: PropTypes.object.isRequired,
-	timelines: PropTypes.object.isRequired,
 	isGenerating: PropTypes.bool.isRequired,
 	onGenerate: PropTypes.func.isRequired,
+	summaryModel: PropTypes.string.isRequired,
 };
 
 export default ContentPanel;

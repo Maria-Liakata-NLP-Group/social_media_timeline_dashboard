@@ -1,2 +1,2 @@
 git+https://github.com/Maria-Liakata-NLP-Group/adsolve_utilities.git
-flask
+fastapi[standard]

@@ -1,67 +1,55 @@
 /** @format */
 
+import axios from "axios";
+import { useState, useEffect, useCallback, useContext } from "react";
+
 import "./style.scss";
 import ContentPanel from "./contentPanel";
 import Panel from "./components/panel";
 import userIds from "./assets/user_ids.json";
-import { useState, useEffect, useCallback } from "react";
+import { BackendContext } from "./main.jsx";
 
 function App() {
 	const [userId, setUserId] = useState(userIds.ids[0]);
 	const [posts, setPosts] = useState({});
-	const [timelines, setTimelines] = useState({});
 	const [isGenerating, setGen] = useState(false);
-	const [error, setError] = useState("");
+	const [summaryModel, setSummaryModel] = useState("tulu");
 
-	const loadData = useCallback(() => {
-		Promise.all([
-			fetch(`/data/${userId}_posts.json`).then((res) => res.json()),
-			fetch(`/data/${userId}_timelines.json`).then((res) => res.json()),
-		]).then(([postsData, timelinesData]) => {
-			setPosts(postsData);
-			setTimelines(timelinesData);
-		});
-	}, [userId]);
+	const { backendAvailable } = useContext(BackendContext);
+
+	const loadPosts = useCallback(async () => {
+		// load posts from backend if available otherwise load it via frontend
+		try {
+			const url = backendAvailable
+				? `/api/posts/${userId}`
+				: `/data/${userId}_posts.json`;
+
+			const { data } = await axios.get(url);
+			setPosts(data);
+		} catch (e) {
+			console.error("Failed to load posts:", e);
+		}
+	}, [userId, backendAvailable]);
 
 	useEffect(() => {
-		loadData();
-	}, [loadData]);
+		loadPosts();
+	}, [userId, loadPosts, backendAvailable]);
 
 	const handleGenerate = async (postIds, modelName) => {
 		setGen(true);
-		setError("");
 
 		try {
-			const resp = await fetch("/api/generate-summary", {
-				method: "POST",
-				headers: {
-					"Content-Type": "application/json",
-				},
-				body: JSON.stringify({
-					user_id: userId, // make sure userId is in scope
-					posts_ids: postIds, // the array you pass in
-					model_name: modelName, // the model name
-				}),
+			const response = await axios.put("/api/generate-summary", {
+				user_id: userId,
+				posts_ids: postIds,
+				model_name: modelName,
 			});
 
-			// parse the JSON body (whether OK or error)
-			const data = await resp.json();
-
-			if (!resp.ok) {
-				// if the server returned an error status, throw it
-				throw new Error(data.error || resp.statusText);
-			}
-
-			// success! optionally log the returned user id:
-			console.log("Generated summary for:", data.userid);
-
-			// now reload your data so the new summary shows up:
-			await loadData();
-		} catch (e) {
-			console.error("Generation error:", e);
-			setError(e.message);
+			console.log("Generated summary for:", response.data.userid);
+		} catch (error) {
+			console.error("Generation error:", error);
+			alert(error);
 		} finally {
-			loadData();
 			setGen(false);
 		}
 	};
@@ -74,28 +62,59 @@ function App() {
 			>
 				<div
 					className="mb-4"
-					style={{ flex: "0 0 auto" }}
+					style={{ display: "flex", flex: "0 0 auto", flexDirection: "row" }}
 				>
-					<h1 className="subtitle is-5">Patient ID</h1>
-					<div className="select">
-						<select onChange={(e) => setUserId(e.target.value)}>
-							{userIds.ids.map((id) => (
-								<option
-									key={id}
-									value={id}
+					<div>
+						<h1 className="subtitle is-5">Patient ID</h1>
+						<div className="select">
+							<select onChange={(e) => setUserId(e.target.value)}>
+								{userIds.ids.map((id) => (
+									<option
+										key={id}
+										value={id}
+									>
+										{id}
+									</option>
+								))}
+							</select>
+						</div>
+					</div>
+					<div className="ml-5">
+						<h1 className="subtitle is-5">Summary Model</h1>
+						<div className="tabs is-toggle">
+							<ul>
+								<li
+									className={summaryModel === "tulu" ? "is-active" : ""}
+									onClick={() => setSummaryModel("tulu")}
 								>
-									{id}
-								</option>
-							))}
-						</select>
+									<a>
+										<span>Tulu</span>
+									</a>
+								</li>
+								<li
+									className={
+										summaryModel === "meta-llama/Meta-Llama-3.1-8B-Instruct"
+											? "is-active"
+											: ""
+									}
+									onClick={() =>
+										setSummaryModel("meta-llama/Meta-Llama-3.1-8B-Instruct")
+									}
+								>
+									<a>
+										<span>LLama</span>
+									</a>
+								</li>
+							</ul>
+						</div>
 					</div>
 				</div>
 				<ContentPanel
 					userId={userId}
 					posts={posts}
-					timelines={timelines}
 					isGenerating={isGenerating}
 					onGenerate={handleGenerate}
+					summaryModel={summaryModel}
 				/>
 			</Panel>
 		</div>
