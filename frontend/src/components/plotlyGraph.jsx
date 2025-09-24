@@ -1,18 +1,8 @@
 /** @format */
 
-import axios from "axios";
 import Plot from "react-plotly.js";
 import PropTypes from "prop-types";
-import {
-	useMemo,
-	useState,
-	useEffect,
-	useCallback,
-	useRef,
-	useContext,
-} from "react";
-
-import { BackendContext } from "../main";
+import { useMemo, useState, useEffect, useCallback, useRef } from "react";
 
 const legendTraces = [
 	{
@@ -40,43 +30,9 @@ const legendTraces = [
 	},
 ];
 
-const filterForTimelinesOfInterest = (timelines) => {
-	return Object.values(timelines)
-		.filter((timeline) => timeline.timeline_of_interest)
-		.map((timeline) => timeline.posts);
-};
-
-const PlotlyChart = ({ userId, posts, onDateRangeChange }) => {
+const PlotlyChart = ({ posts, timelinesOfInterest, onDateRangeChange }) => {
 	const [zoomRange, setZoomRange] = useState(null);
-	const [timelinesOfInterest, setTimelinesOfInterest] = useState([]);
 	const [binSize, setBinSize] = useState("M1");
-	const { backendAvailable } = useContext(BackendContext);
-
-	// Get timelines of interest from backend if available
-	const getTimelinesOfInterest = useCallback(async () => {
-		if (backendAvailable) {
-			try {
-				const res = await axios.get(`/api/timelines-of-interest/${userId}`);
-				setTimelinesOfInterest(res.data);
-			} catch (e) {
-				console.error("Failed to load timelines of interest:", e);
-				setTimelinesOfInterest([]);
-			}
-		} else {
-			try {
-				// Fallback to frontend data
-				const res = await axios.get(`/data/${userId}_timelines.json`);
-				const toi = filterForTimelinesOfInterest(res.data);
-				setTimelinesOfInterest(toi);
-			} catch (e) {
-				console.error(
-					"Failed to load timelines of interest from frontend data:",
-					e
-				);
-				setTimelinesOfInterest([]);
-			}
-		}
-	}, [backendAvailable, userId]);
 
 	const timestamps = useMemo(
 		() =>
@@ -85,11 +41,6 @@ const PlotlyChart = ({ userId, posts, onDateRangeChange }) => {
 			),
 		[posts]
 	);
-
-	// Calculate timelines of interest when userId changes
-	useEffect(() => {
-		getTimelinesOfInterest();
-	}, [getTimelinesOfInterest]);
 
 	// 1) Keep a ref of the *latest* posts
 	const postsRef = useRef(posts);
@@ -109,7 +60,7 @@ const PlotlyChart = ({ userId, posts, onDateRangeChange }) => {
 		const maxDate = new Date(Math.max(...dates));
 		return [minDate.toISOString(), maxDate.toISOString()];
 		// eslint-disable-next-line react-hooks/exhaustive-deps
-	}, [userId]);
+	}, [posts]);
 
 	const shapes = useMemo(() => {
 		return timelinesOfInterest.flatMap((timeline) => {
@@ -245,7 +196,17 @@ const PlotlyChart = ({ userId, posts, onDateRangeChange }) => {
 	);
 
 	return (
-		<div style={{ flex: 1, minHeight: 0 }}>
+		<div
+			style={{
+				flexGrow: 1,
+				flexShrink: 1,
+				minHeight: 0,
+				height: "100%",
+				width: "100%",
+				display: "flex", // makes sure Plot expands inside
+			}}
+			className="p-4"
+		>
 			<Plot
 				onClick={handleClick}
 				onRelayout={handleRelayout}
@@ -299,8 +260,8 @@ const PlotlyChart = ({ userId, posts, onDateRangeChange }) => {
 };
 
 PlotlyChart.propTypes = {
-	userId: PropTypes.string.isRequired,
 	posts: PropTypes.object.isRequired,
+	timelinesOfInterest: PropTypes.array.isRequired,
 	onDateRangeChange: PropTypes.func.isRequired,
 };
 

@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "concurrently -k -r -n VITE,FASTAPI -c green,cyan \"npm:dev:vite\" \"npm:dev:fastapi\"",
     "dev:vite": "vite",
-    "dev:fastapi": "fastapi dev main.py",
+    "dev:fastapi": "cd ../backend && fastapi dev main.py",
     "build": "vite build",
     "lint": "eslint .",
     "preview": "vite preview"

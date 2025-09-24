@@ -3,31 +3,16 @@ import axios from "axios";
 import { useState, useEffect, useCallback, useContext } from "react";
 
 import { BackendContext } from "./main.jsx";
+import filterAndSortPosts from "./helpers/sortPosts.jsx";
 import PlotlyChart from "./components/plotlyGraph";
 import PostTable from "./components/postTable";
 import PropTypes from "prop-types";
 import Summary from "./components/summary";
 
-const filterAndSortPosts = (posts, dateRange) => {
-	const [start, end] = dateRange;
-
-	const filteredPostEntries = Object.entries(posts)
-		.map(([key, post]) => {
-			const date = new Date(post.created_utc * 1000);
-			return { key, post, date };
-		})
-		.filter(({ date }) => {
-			if (!start || !end) return true;
-			return date >= start && date <= end;
-		})
-		.sort((a, b) => a.date - b.date);
-
-	return filteredPostEntries.map(({ key }) => key);
-};
-
 const ContentPanel = ({
 	userId,
 	posts,
+	timelinesOfInterest,
 	isGenerating,
 	onGenerate,
 	summaryModel,
@@ -143,8 +128,8 @@ const ContentPanel = ({
 					style={{ flexBasis: "45%" }}
 				>
 					<PlotlyChart
-						userId={userId}
 						posts={posts}
+						timelinesOfInterest={timelinesOfInterest}
 						onDateRangeChange={handleDateRangeChange}
 					/>
 				</div>
@@ -176,6 +161,7 @@ const ContentPanel = ({
 ContentPanel.propTypes = {
 	userId: PropTypes.string.isRequired,
 	posts: PropTypes.object.isRequired,
+	timelinesOfInterest: PropTypes.array.isRequired,
 	isGenerating: PropTypes.bool.isRequired,
 	onGenerate: PropTypes.func.isRequired,
 	summaryModel: PropTypes.string.isRequired,
