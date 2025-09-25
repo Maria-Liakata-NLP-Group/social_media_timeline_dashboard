@@ -1,5 +1,4 @@
 git+https://github.com/Maria-Liakata-NLP-Group/adsolve_utilities.git
 fastapi[standard]
-pandas
 pydantic_settings
 scipy

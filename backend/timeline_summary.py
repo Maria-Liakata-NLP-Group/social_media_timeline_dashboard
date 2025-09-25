@@ -53,6 +53,8 @@ class ModelHandler():
         if torch.cuda.is_available():
             torch.cuda.empty_cache()
     
+
+    
     def load_summariser(self, model_name):
         # always make sure to unload summariser before loading new summariser
         self.unload_summariser()
@@ -75,3 +77,10 @@ class ModelHandler():
             )
         
         return summary
+
+    def interrupt_summary(self):
+        pass
+    
+    def cleanup(self):
+        self.unload_summariser()
+        print("Cleaned up ModelHandler.")

@@ -16,8 +16,8 @@ function AddDataPanel({ active, onClose }) {
 	const [sortedKeys, setSortedKeys] = useState([]); // sorted keys for post dictionary
 	const [timelinesOfInterest, setTimelinesOfInterest] = useState([]); // Store timelines after processing
 	const [uploadMessage, setUploadMessage] = useState("");
-	const [alpha, setAlpha] = useState(1);
-	const [beta, setBeta] = useState(1);
+	const [alpha, setAlpha] = useState(0.01);
+	const [beta, setBeta] = useState(10);
 	const [hazard, setHazard] = useState(1000);
 	const [spanRadius, setSpanRadius] = useState(7);
 
@@ -84,11 +84,36 @@ function AddDataPanel({ active, onClose }) {
 		}
 	};
 
+	const handleSaveData = async () => {
+		if (!sessionId) {
+			alert("No session ID found. Please upload data first.");
+			return;
+		}
+		try {
+			const res = await axios.post("/api/save-user-data/", {
+				session_id: sessionId,
+			});
+			console.log(res.data);
+		} catch (error) {
+			console.error("Error saving data:", error);
+			alert("Failed to save data.");
+		}
+		onClose(true); // Close panel and signal to reload data in parent
+	};
+
+	const handleCloseWithoutSave = () => {
+		// send signal to backend to delete session data
+		if (sessionId) {
+			axios.delete("/api/delete-session/", { data: { session_id: sessionId } });
+		}
+		onClose(false); // Close panel without saving
+	};
+
 	return (
 		<div className={`modal ${active ? "is-active" : ""}`}>
 			<div
 				className="modal-background"
-				onClick={onClose}
+				onClick={handleCloseWithoutSave}
 			></div>
 			<div
 				className="modal-content"
@@ -99,82 +124,124 @@ function AddDataPanel({ active, onClose }) {
 					flexGrow={1}
 				>
 					<div
-						style={{ display: "flex", flex: "0 0 auto", flexDirection: "row" }}
+						className="is-flex is-justify-content-space-between mb-4"
+						style={{ width: "100%", flexBasis: "60%" }}
 					>
-						<FileUpload handleFileUpload={handleFileUpload} />
-						<span>{uploadMessage}</span>
-					</div>
-					<div
-						className="is-flex mb-4"
-						style={{ flexBasis: "40%", minHeight: "40%", maxHeight: "40%" }}
-					>
-						<div
-							style={{ width: "50%" }}
-							className="is-flex is-flex-direction-column"
-						>
-							<h1 className="subtitle is-5 mb-5">Timeline Parameters</h1>
-							<div className="mb-4">
-								<input
-									type="range"
-									min="1"
-									max="100"
-									step="1"
-									value={alpha}
-									onChange={(e) => setAlpha(parseFloat(e.target.value))}
-								/>
-								<label className="ml-2">Alpha: {alpha}</label>
+						<div className="is-flex is-flex-direction-column">
+							<div className="is-flex is-flex-direction-row mb-4">
+								<FileUpload handleFileUpload={handleFileUpload} />
+								<span>{uploadMessage}</span>
 							</div>
-							<div className="mb-4">
-								<input
-									type="range"
-									min="1"
-									max="100"
-									step="1"
-									value={beta}
-									onChange={(e) => setBeta(parseFloat(e.target.value))}
-								/>
-								<label className="ml-2">Beta: {beta}</label>
-							</div>
-							<div className="mb-4">
-								<input
-									type="range"
-									min="1"
-									max="2000"
-									step="1"
-									value={hazard}
-									onChange={(e) => setHazard(parseInt(e.target.value))}
-								/>
-								<label className="ml-2">Hazard: {hazard}</label>
-							</div>
-							<div className="mb-4">
-								<input
-									type="range"
-									min="1"
-									max="30"
-									step="1"
-									value={spanRadius}
-									onChange={(e) => setSpanRadius(parseInt(e.target.value))}
-								/>
-								<label className="ml-2">Span Radius: {spanRadius}</label>
-							</div>
-							<div>
-								<button
-									className="button is-link mb-2"
-									onClick={handleCreateTimelines}
+							<div className="is-flex is-flex-direction-row is-align-items-stretch">
+								<div
+									className="is-flex is-flex-direction-column is-flex-grow-1"
+									style={{ minHeight: "100%" }}
 								>
-									Calculate Timelines
+									<h1 className="subtitle is-5 mb-5">Timeline Parameters</h1>
+									<div className="mb-4">
+										<input
+											type="range"
+											min="0"
+											max="10"
+											step="0.01"
+											value={alpha}
+											onChange={(e) => setAlpha(parseFloat(e.target.value))}
+										/>
+										<label className="ml-2">Alpha: {alpha}</label>
+									</div>
+									<div className="mb-4">
+										<input
+											type="range"
+											min="0"
+											max="10"
+											step="0.01"
+											value={beta}
+											onChange={(e) => setBeta(parseFloat(e.target.value))}
+										/>
+										<label className="ml-2">Beta: {beta}</label>
+									</div>
+									<div className="mb-4">
+										<input
+											type="range"
+											min="1"
+											max="2000"
+											step="1"
+											value={hazard}
+											onChange={(e) => setHazard(parseInt(e.target.value))}
+										/>
+										<label className="ml-2">Hazard: {hazard}</label>
+									</div>
+									<div className="mb-4">
+										<input
+											type="range"
+											min="1"
+											max="30"
+											step="1"
+											value={spanRadius}
+											onChange={(e) => setSpanRadius(parseInt(e.target.value))}
+										/>
+										<label className="ml-2">Span Radius: {spanRadius}</label>
+									</div>
+									<div className="mt-auto">
+										<button
+											className="button is-link is-small mb-2"
+											onClick={handleCreateTimelines}
+										>
+											Calculate Timelines
+										</button>
+									</div>
+								</div>
+								<div
+									className="is-flex is-flex-direction-column ml-6 is-flex-grow-1"
+									style={{ minHeight: "100%" }}
+								>
+									<h1 className="subtitle is-5 mb-5">
+										Moments of Change Parameters
+									</h1>
+									<div className="mb-4">
+										<input
+											type="range"
+											min="0"
+											max="10"
+											step="0.01"
+											value={0}
+											onChange={() => null}
+										/>
+										<label className="ml-2">Para 1: </label>
+									</div>
+									<div className="mb-4">
+										<input
+											type="range"
+											min="0"
+											max="10"
+											step="0.01"
+											value={0}
+											onChange={() => null}
+										/>
+										<label className="ml-2">Para 2:</label>
+									</div>
+									<div className="mt-auto">
+										<button
+											className="button is-link is-small mb-2"
+											onClick={() => null} //TODO: implement
+										>
+											Calculate Moments of Change
+										</button>
+									</div>
+								</div>
+							</div>
+							<div className="is-flex-grow-1 is-flex is-align-items-center">
+								<button
+									className="button is-success"
+									onClick={handleSaveData}
+								>
+									Save new patient data
 								</button>
 							</div>
 						</div>
 						<div
-							style={{
-								flexBasis: 0,
-								flexGrow: 1,
-								flexShrink: 1,
-								height: "100%",
-								display: "flex",
-							}}
-							className="ml-2"
+							className="is-flex-grow-1 ml-2"
+							style={{ maxWidth: "50%" }}
 						>
 							<PlotlyChart
 								posts={posts}

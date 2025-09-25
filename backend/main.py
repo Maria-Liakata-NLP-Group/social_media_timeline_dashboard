@@ -1,4 +1,6 @@
+from contextlib import asynccontextmanager
 from fastapi import Query, FastAPI, HTTPException, UploadFile
+from fastapi.middleware.cors import CORSMiddleware
 import json
 import os
 from pathlib import Path
@@ -18,6 +20,9 @@ class TimelineGenerationRequest(BaseModel):
     beta: float
     hazard: float
     span_radius: int
+
+class SaveDataRequest(BaseModel):
+    session_id: str
 
 class GenerationRequest(BaseModel):
     user_id: str
@@ -42,8 +47,23 @@ settings = Settings()
 # keys are session_ids and values are dicts with keys 'posts' and 'timelines'
 currently_processing_data = {}
 
-app = FastAPI()
-summariser = ModelHandler(settings.cache_dir)
+# Handle app startup and shutdown events
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    app.state.summariser = ModelHandler(settings.cache_dir)
+    yield
+    app.state.summariser.cleanup()
+    print("App shutdown complete.")
+
+app = FastAPI(lifespan=lifespan)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # or ["http://localhost:5173"] for stricter
+    allow_credentials=True,
+    allow_methods=["*"],   # important: allow POST, DELETE, OPTIONS
+    allow_headers=["*"],   # important: allow Content-Type: application/json
+)
 
 # Helper function to extract timelines of interest from all timeline data
 def extract_timelines_of_interest(timelines: dict) -> List[List[str]]:
@@ -116,6 +136,18 @@ async def create_timelines_for_user(req: TimelineGenerationRequest):
         print("Error creating timelines:", e)
         raise HTTPException(status_code=500, detail="Error creating timelines.")
 
+# Get user IDs
+@app.get("/api/user_ids")
+async def get_user_ids() -> List[str]:
+    try:
+        with open(os.path.join(settings.data_dir, "user_ids.json")) as f:
+            user_ids = json.load(f)
+        print(f"Loaded {len(user_ids['ids'])} user IDs.")
+        return user_ids['ids']
+    except Exception as e:
+        print("Error loading user IDs:", e)
+        raise HTTPException(status_code=404, detail="User IDs not found.")
+
 # Get posts for user
 @app.get("/api/posts/{user_id}")
 async def get_posts(user_id: str):
@@ -140,6 +172,58 @@ async def get_timelines_of_interest(user_id: str):
         print("Error loading timelines:", e)
         raise HTTPException(status_code=404, detail=f"Timeline data for user {user_id} not found.")
 
+# save timeline data
+@app.post("/api/save-user-data")
+async def save_user_data(req: SaveDataRequest):
+    session_id = req.session_id
+    print(f"Saving data for session {session_id}...")
+    print(f"Currently processing data keys: {list(currently_processing_data.keys())}")
+    if session_id not in currently_processing_data:
+        raise HTTPException(status_code=400, detail="Invalid session ID.")
+    
+    try:
+        patient_id = currently_processing_data[session_id]["patient_id"]
+        posts = currently_processing_data[session_id]["posts"]
+        timelines = currently_processing_data[session_id]["timelines"]
+
+        # Save posts to json
+        with open(os.path.join(settings.data_dir, f"{patient_id}_posts.json"), "w") as f:
+            json.dump(posts, f, indent=4)
+        
+        # Save timelines to json
+        with open(os.path.join(settings.data_dir, f"{patient_id}_timelines.json"), "w") as f:
+            json.dump(timelines, f, indent=4)
+        
+        # Update user_ids.json
+        with open(os.path.join(settings.data_dir, "user_ids.json")) as f:
+            user_ids = json.load(f)
+        if patient_id not in user_ids['ids']:
+            user_ids['ids'].append(patient_id)
+            with open(os.path.join(settings.data_dir, "user_ids.json"), "w") as f:
+                json.dump(user_ids, f, indent=4)
+        
+        # Remove from currently processing data
+        del currently_processing_data[session_id]
+
+        print(f"Saved data for user {patient_id} and removed session {session_id}.")
+        return {"message": "User data saved successfully", "user_id": patient_id}
+    except Exception as e:
+        print("Error saving user data:", e)
+        raise HTTPException(status_code=500, detail="Error saving user data.")
+
+# Delete session data if user cancels adding new data
+@app.delete("/api/delete-session")
+async def delete_session(req: SaveDataRequest):
+    session_id = req.session_id
+    if session_id in currently_processing_data:
+        del currently_processing_data[session_id]
+        print(f"Deleted session data for session {session_id} without saving.")
+        return {"message": "Session data deleted successfully"}
+    else:
+        raise HTTPException(status_code=400, detail="Invalid session ID.")
+    
+# TODO: For production, there is a need to periodically clean up old session data
+        
 # Get timeline summary for user
 @app.get("/api/summary")
 async def get_summary(    
@@ -208,7 +292,7 @@ def generate_summary(req: GenerationRequest):
     filtered_posts = [f"{posts[id]['title']} {posts[id]['body']}" for id in posts_ids]
 
     # create summary
-    summary = summariser.run_summary(
+    summary = app.state.summariser.run_summary(
             model_name=model_name,
             posts=filtered_posts,
         )
@@ -221,10 +305,10 @@ def generate_summary(req: GenerationRequest):
         timelines[timeline_id] = {
             "timeline_of_interest": False,
             "posts": posts_ids,
-            f"summary_{summariser.model_name}": summary
+            f"summary_{app.state.summariser.model_name}": summary
         }
     else:
-        timelines[timeline_id][f"summary_{summariser.model_name}"] = summary
+        timelines[timeline_id][f"summary_{app.state.summariser.model_name}"] = summary
 
     # save timeline json for user
     with open(os.path.join(settings.data_dir, f"{user_id}_timelines.json"), "w") as f:

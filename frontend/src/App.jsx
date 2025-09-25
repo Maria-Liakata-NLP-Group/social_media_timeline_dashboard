@@ -2,12 +2,12 @@
 
 import axios from "axios";
 import { useState, useEffect, useCallback, useContext } from "react";
+import PropTypes from "prop-types";
 
 import "./style.scss";
 import ContentPanel from "./contentPanel";
 import Panel from "./components/panel";
 import AddDataPanel from "./components/addDataPanel.jsx";
-import userIds from "./assets/user_ids.json";
 import { BackendContext } from "./main.jsx";
 
 const filterForTimelinesOfInterest = (timelines) => {
@@ -16,8 +16,8 @@ const filterForTimelinesOfInterest = (timelines) => {
 		.map((timeline) => timeline.posts);
 };
 
-function App() {
-	const [userId, setUserId] = useState(userIds.ids[0]);
+function App({ userIds, reloadPage }) {
+	const [userId, setUserId] = useState(userIds[0]);
 	const [posts, setPosts] = useState({});
 	const [timelinesOfInterest, setTimelinesOfInterest] = useState([]);
 	const [isGenerating, setGen] = useState(false);
@@ -73,6 +73,17 @@ function App() {
 		getTimelinesOfInterest();
 	}, [userId, loadPosts, getTimelinesOfInterest, backendAvailable]);
 
+	// Handle opening and closing of the add data panel
+	const handleCloseAddDataPanel = useCallback(
+		(reload) => {
+			setShowAddDataPanel(false);
+			if (reload) {
+				reloadPage(); // Reload user IDs in parent component
+			}
+		},
+		[reloadPage]
+	);
+
 	const handleGenerate = async (postIds, modelName) => {
 		setGen(true);
 
@@ -96,7 +107,7 @@ function App() {
 		<div className="is-flex root-container">
 			<AddDataPanel
 				active={showAddDataPanel}
-				onClose={() => setShowAddDataPanel(false)}
+				onClose={handleCloseAddDataPanel}
 			/>
 			<Panel
 				flexGrow={1}
@@ -110,7 +121,7 @@ function App() {
 						<h1 className="subtitle is-5">Patient ID</h1>
 						<div className="select">
 							<select onChange={(e) => setUserId(e.target.value)}>
-								{userIds.ids.map((id) => (
+								{userIds.map((id) => (
 									<option
 										key={id}
 										value={id}
@@ -170,5 +181,10 @@ function App() {
 		</div>
 	);
 }
+
+App.propTypes = {
+	userIds: PropTypes.arrayOf(PropTypes.string).isRequired,
+	reloadPage: PropTypes.func.isRequired,
+};
 
 export default App;

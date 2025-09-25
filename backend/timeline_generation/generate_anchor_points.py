@@ -12,14 +12,20 @@ def return_anchor_points_for_method(method:str,
                                     alpha:float=0.01, 
                                     beta:float=0.1, 
                                     hazard:float=1000, 
-                                    user_id:str | None =None,
                                     process_into:str='dates', 
                                     feature:str='posts'):
     """
     Inputs:
     =======
-    method = String. The specified model to use, to create anchor points (e.g. change-points)
-    user_feature_data = Pandas dataframe for the user, consisting of all their features.
+    method = String. The specified model to use, currently only 'bocpd' is implemented.
+    distribution = String. The specified distribution and priors to use for the BOCPD model
+    user_feature_data = Pandas dataframe for the user, consisting of all their features. The index should be datetime and each column a feature (e.g. number of posts per day)
+    alpha = Float. Alpha parameter for the Poisson-Gamma BOCPD model.
+    beta = Float. Beta parameter for the Poisson-Gamma BOCPD model.
+    hazard = Float. Hazard parameter for the Poisson-Gamma BOCPD model.
+    process_into = String. How to process the anchor points, either into 'dates' (days) or 'default' (timestamps).
+    feature = String. The feature/column in the user_feature_data dataframe to use for anchor point detection.
+    
     
     Outputs:
     ========
