@@ -39,7 +39,11 @@ function Main() {
 			try {
 				const url = backendAvailable ? "/api/user_ids" : "/data/user_ids.json";
 				const { data } = await axios.get(url);
-				setUserIds(data);
+				if (backendAvailable) {
+					setUserIds(data);
+				} else {
+					setUserIds(data.ids);
+				}
 			} catch (e) {
 				console.error("Failed to load user IDs:", e);
 			}
