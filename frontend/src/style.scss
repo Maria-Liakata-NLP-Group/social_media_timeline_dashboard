@@ -50,3 +50,19 @@ td.has-background-escalation {
     border-left: 1px solid $border-color;
     border-bottom: 1px solid $border-color;
 }
+
+.section-wrapper.is-disabled {
+    opacity: 0.6;
+    /* fade it a bit */
+    filter: grayscale(100%);
+    /* turn everything grey */
+    pointer-events: none;
+    /* prevent clicks */
+}
+
+.value-label {
+    display: inline-block;
+    min-width: 6ch;
+    /* enough for "2000.00" */
+    text-align: left;
+}

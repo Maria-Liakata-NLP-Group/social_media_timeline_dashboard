@@ -118,7 +118,16 @@ function App({ userIds, reloadPage }) {
 					style={{ display: "flex", flex: "0 0 auto", flexDirection: "row" }}
 				>
 					<div>
-						<h1 className="subtitle is-5">Patient ID</h1>
+						<div className="is-flex is-align-items-center">
+							<h1 className="subtitle is-5">Patient ID</h1>
+							<button
+								className="button is-small ml-2 is-link is-inverted"
+								onClick={() => setShowAddDataPanel(true)}
+								title="Add Data"
+							>
+								Add patient data
+							</button>
+						</div>
 						<div className="select">
 							<select onChange={(e) => setUserId(e.target.value)}>
 								{userIds.map((id) => (
@@ -131,13 +140,6 @@ function App({ userIds, reloadPage }) {
 								))}
 							</select>
 						</div>
-						<button
-							className="button is-small ml-2 is-link is-inverted"
-							onClick={() => setShowAddDataPanel(true)}
-							title="Add Data"
-						>
-							Add patient data
-						</button>
 					</div>
 					<div className="ml-5">
 						<h1 className="subtitle is-5">Summary Model</h1>

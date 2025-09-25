@@ -1,5 +1,4 @@
 /** @format */
-
 import {
 	StrictMode,
 	useState,
@@ -40,7 +39,6 @@ function Main() {
 			try {
 				const url = backendAvailable ? "/api/user_ids" : "/data/user_ids.json";
 				const { data } = await axios.get(url);
-				console.log("Loaded user IDs:", data);
 				setUserIds(data);
 			} catch (e) {
 				console.error("Failed to load user IDs:", e);

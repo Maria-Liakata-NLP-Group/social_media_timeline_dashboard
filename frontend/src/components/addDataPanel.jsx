@@ -11,10 +11,12 @@ import PlotlyChart from "./plotlyGraph.jsx";
 import filterAndSortPosts from "../helpers/sortPosts.jsx";
 
 function AddDataPanel({ active, onClose }) {
+	const [progress, setProgress] = useState(0); // Track steps in the timeline creation pipeline
 	const [sessionId, setSessionId] = useState(null); // Track processing data on server with this id
 	const [posts, setPosts] = useState({}); // Store posts after upload
 	const [sortedKeys, setSortedKeys] = useState([]); // sorted keys for post dictionary
 	const [timelinesOfInterest, setTimelinesOfInterest] = useState([]); // Store timelines after processing
+	const [timelinesLoading, setTimelinesLoading] = useState(false); // Loading state for timelines
 	const [uploadMessage, setUploadMessage] = useState("");
 	const [alpha, setAlpha] = useState(0.01);
 	const [beta, setBeta] = useState(10);
@@ -41,6 +43,7 @@ function AddDataPanel({ active, onClose }) {
 		formData.append("file", file);
 
 		try {
+			setUploadMessage(<span className="ml-2">Uploading...</span>);
 			const response = await axios.post("/api/upload-user-data", formData, {
 				headers: {
 					"Content-Type": "multipart/form-data",
@@ -54,6 +57,7 @@ function AddDataPanel({ active, onClose }) {
 			console.log("Upload response:", response.data);
 			setPosts(response.data["posts"]); // Set posts to the uploaded data
 			setSessionId(response.data["session_id"]); // Set session ID
+			setProgress(1); // Move to next step
 		} catch (error) {
 			console.error("File upload error:", error);
 			alert("Failed to upload file.");
@@ -69,6 +73,7 @@ function AddDataPanel({ active, onClose }) {
 			return;
 		}
 		try {
+			setTimelinesLoading(true);
 			const response = await axios.post("/api/create-timelines", {
 				session_id: sessionId,
 				method: "bocpd",
@@ -78,10 +83,24 @@ function AddDataPanel({ active, onClose }) {
 				span_radius: spanRadius,
 			});
 			setTimelinesOfInterest(response.data);
+			setProgress(3); // TODO: change to 2 once moments of change is implemented
 		} catch (error) {
 			console.error("Error creating timelines:", error);
 			alert("Failed to create timelines.");
+		} finally {
+			setTimelinesLoading(false);
 		}
+	};
+	// Reset all states when panel is closed
+	const resetStates = () => {
+		console.log("Resetting AddDataPanel state");
+		setProgress(0);
+		setSessionId(null);
+		setPosts({});
+		setSortedKeys([]);
+		setTimelinesOfInterest([]);
+		setTimelinesLoading(false);
+		setUploadMessage("");
 	};
 
 	const handleSaveData = async () => {
@@ -98,6 +117,7 @@ function AddDataPanel({ active, onClose }) {
 			console.error("Error saving data:", error);
 			alert("Failed to save data.");
 		}
+		resetStates();
 		onClose(true); // Close panel and signal to reload data in parent
 	};
 
@@ -106,6 +126,7 @@ function AddDataPanel({ active, onClose }) {
 		if (sessionId) {
 			axios.delete("/api/delete-session/", { data: { session_id: sessionId } });
 		}
+		resetStates();
 		onClose(false); // Close panel without saving
 	};
 
@@ -122,19 +143,46 @@ function AddDataPanel({ active, onClose }) {
 				<Panel
 					height="90vh"
 					flexGrow={1}
+					position="relative"
 				>
+					<span
+						className="icon is-clickable"
+						onClick={handleCloseWithoutSave}
+						style={{
+							position: "absolute",
+							top: "10px",
+							right: "10px",
+							zIndex: 10,
+						}}
+					>
+						<i className="fa-solid fa-xmark"></i>
+					</span>
 					<div
 						className="is-flex is-justify-content-space-between mb-4"
 						style={{ width: "100%", flexBasis: "60%" }}
 					>
 						<div className="is-flex is-flex-direction-column">
-							<div className="is-flex is-flex-direction-row mb-4">
+							<div className="is-flex is-flex-direction-row is-align-items-center mb-4">
+								<span className="icon mr-2">
+									<i className="fa-solid fa-1"></i>
+								</span>
 								<FileUpload handleFileUpload={handleFileUpload} />
 								<span>{uploadMessage}</span>
 							</div>
 							<div className="is-flex is-flex-direction-row is-align-items-stretch">
 								<div
-									className="is-flex is-flex-direction-column is-flex-grow-1"
+									className={`section-wrapper ${
+										progress < 1 ? "is-disabled" : ""
+									}`}
+								>
+									<span className="icon mr-2">
+										<i className="fa-solid fa-2"></i>
+									</span>
+								</div>
+								<div
+									className={`is-flex is-flex-direction-column is-flex-grow-1 section-wrapper ${
+										progress < 1 ? "is-disabled" : ""
+									}`}
 									style={{ minHeight: "100%" }}
 								>
 									<h1 className="subtitle is-5 mb-5">Timeline Parameters</h1>
@@ -147,7 +195,10 @@ function AddDataPanel({ active, onClose }) {
 											value={alpha}
 											onChange={(e) => setAlpha(parseFloat(e.target.value))}
 										/>
-										<label className="ml-2">Alpha: {alpha}</label>
+										<label className="ml-2">
+											Alpha:{" "}
+											<span className="value-label">{alpha.toFixed(2)}</span>
+										</label>
 									</div>
 									<div className="mb-4">
 										<input
@@ -158,7 +209,10 @@ function AddDataPanel({ active, onClose }) {
 											value={beta}
 											onChange={(e) => setBeta(parseFloat(e.target.value))}
 										/>
-										<label className="ml-2">Beta: {beta}</label>
+										<label className="ml-2">
+											Beta:{" "}
+											<span className="value-label">{beta.toFixed(2)}</span>
+										</label>
 									</div>
 									<div className="mb-4">
 										<input
@@ -169,7 +223,9 @@ function AddDataPanel({ active, onClose }) {
 											value={hazard}
 											onChange={(e) => setHazard(parseInt(e.target.value))}
 										/>
-										<label className="ml-2">Hazard: {hazard}</label>
+										<label className="ml-2">
+											Hazard: <span className="value-label">{hazard}</span>
+										</label>
 									</div>
 									<div className="mb-4">
 										<input
@@ -180,23 +236,46 @@ function AddDataPanel({ active, onClose }) {
 											value={spanRadius}
 											onChange={(e) => setSpanRadius(parseInt(e.target.value))}
 										/>
-										<label className="ml-2">Span Radius: {spanRadius}</label>
+										<label className="ml-2">
+											Span Radius:{" "}
+											<span className="value-label">{spanRadius}</span>
+										</label>
 									</div>
 									<div className="mt-auto">
 										<button
-											className="button is-link is-small mb-2"
+											className={`button is-link is-small mb-2 ${
+												timelinesLoading ? "is-loading" : ""
+											}`}
+											disabled={timelinesLoading}
 											onClick={handleCreateTimelines}
 										>
 											Calculate Timelines
 										</button>
 									</div>
 								</div>
+								{/* TODO: remove the constant is-disabled once implemented */}
 								<div
-									className="is-flex is-flex-direction-column ml-6 is-flex-grow-1"
+									className={`ml-4 section-wrapper is-disabled ${
+										progress < 2 ? "is-disabled" : ""
+									}`}
+								>
+									<span className="icon mr-2">
+										<i className="fa-solid fa-3"></i>
+									</span>
+								</div>
+								<div
+									className={`is-flex is-flex-direction-column is-flex-grow-1 section-wrapper is-disabled ${
+										progress < 2 ? "is-disabled" : ""
+									}`}
 									style={{ minHeight: "100%" }}
 								>
 									<h1 className="subtitle is-5 mb-5">
-										Moments of Change Parameters
+										<s>Moments of Change Parameters</s>
+										<br />
+										<span className="has-text-danger is-size-6">
+											{" "}
+											(Coming Soon)
+										</span>
 									</h1>
 									<div className="mb-4">
 										<input
@@ -230,7 +309,16 @@ function AddDataPanel({ active, onClose }) {
 									</div>
 								</div>
 							</div>
-							<div className="is-flex-grow-1 is-flex is-align-items-center">
+							<div
+								className={`is-flex-grow-1 is-flex is-align-items-center section-wrapper ${
+									progress < 3 ? "is-disabled" : ""
+								}`}
+							>
+								<div>
+									<span className="icon mr-2">
+										<i className="fa-solid fa-4"></i>
+									</span>
+								</div>
 								<button
 									className="button is-success"
 									onClick={handleSaveData}
@@ -243,21 +331,29 @@ function AddDataPanel({ active, onClose }) {
 							className="is-flex-grow-1 ml-2"
 							style={{ maxWidth: "50%" }}
 						>
-							<PlotlyChart
-								posts={posts}
-								timelinesOfInterest={timelinesOfInterest}
-								onDateRangeChange={handleDateRangeChange}
-							/>
+							{progress > 0 ? (
+								<PlotlyChart
+									posts={posts}
+									timelinesOfInterest={timelinesOfInterest}
+									onDateRangeChange={handleDateRangeChange}
+								/>
+							) : (
+								""
+							)}
 						</div>
 					</div>
 					<div
 						className="table-container"
 						style={{ position: "relative", flexBasis: "40%", minHeight: 0 }}
 					>
-						<PostTable
-							posts={posts}
-							filteredKeys={sortedKeys}
-						/>
+						{progress > 0 ? (
+							<PostTable
+								posts={posts}
+								filteredKeys={sortedKeys}
+							/>
+						) : (
+							""
+						)}
 						{/* Create nice fade-out at bottom */}
 						<div
 							style={{

@@ -2,7 +2,7 @@
 
 import Plot from "react-plotly.js";
 import PropTypes from "prop-types";
-import { useMemo, useState, useEffect, useCallback, useRef } from "react";
+import { useMemo, useState, useEffect, useCallback } from "react";
 
 const legendTraces = [
 	{
@@ -42,24 +42,17 @@ const PlotlyChart = ({ posts, timelinesOfInterest, onDateRangeChange }) => {
 		[posts]
 	);
 
-	// 1) Keep a ref of the *latest* posts
-	const postsRef = useRef(posts);
+	// Compute initialZoomRange only when posts change
 	useEffect(() => {
-		postsRef.current = posts;
-	}, [posts]);
-
-	// 2) Compute initialZoomRange only when userId changes
-
-	const initialZoomRange = useMemo(() => {
-		const snap = postsRef.current; // read the snapshot
-		const dates = Object.values(snap).map(
+		const dates = Object.values(posts).map(
 			(p) => new Date(p.created_utc * 1000)
 		);
-		if (dates.length === 0) return null;
-		const minDate = new Date(Math.min(...dates));
-		const maxDate = new Date(Math.max(...dates));
-		return [minDate.toISOString(), maxDate.toISOString()];
-		// eslint-disable-next-line react-hooks/exhaustive-deps
+		if (dates.length > 0) {
+			const minDate = new Date(Math.min(...dates));
+			const maxDate = new Date(Math.max(...dates));
+			const initialZoomRange = [minDate.toISOString(), maxDate.toISOString()];
+			setZoomRange(initialZoomRange);
+		}
 	}, [posts]);
 
 	const shapes = useMemo(() => {
@@ -151,12 +144,6 @@ const PlotlyChart = ({ posts, timelinesOfInterest, onDateRangeChange }) => {
 
 		setBinSize(days > 120 ? "M1" : days > 14 ? 604800000 : 86400000);
 	}, [zoomRange]);
-
-	useEffect(() => {
-		if (initialZoomRange) {
-			setZoomRange(initialZoomRange);
-		}
-	}, [initialZoomRange]);
 
 	const handleRelayout = useCallback(
 		(eventData) => {
